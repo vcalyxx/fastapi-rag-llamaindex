@@ -1,8 +1,10 @@
 from qdrant_client import QdrantClient
 from llama_index.vector_stores.qdrant import QdrantVectorStore
 
-from llama_index.core import SimpleDirectoryReader
+from llama_index.core import SimpleDirectoryReader, VectorStoreIndex, StorageContext
 from llama_index.core.node_parser import SentenceSplitter
+
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
 ## Connection to the Qdrant client
 client = QdrantClient(url="http://localhost:6333")
@@ -28,10 +30,21 @@ parser = SentenceSplitter(
 
 nodes = parser.get_nodes_from_documents(documents)
 
+## Embedding
 
+# Initialize embedding model
+embed_model = HuggingFaceEmbedding(
+    model_name="BAAI/bge-small-en"
+)
 
+storage_context = StorageContext.from_defaults(
+    vector_store=vector_store
+)
 
-print(f"Documents loaded: {len(documents)}")
-print(f"Chunks created: {len(nodes)}")
-print("\nSample chunk:\n")
-print(nodes[0].text[:500])
+# Create Index
+index = VectorStoreIndex(
+    nodes,
+    storage_context=storage_context,
+    embed_model=embed_model
+)
+
