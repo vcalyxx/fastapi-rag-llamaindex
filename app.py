@@ -5,6 +5,7 @@ from llama_index.core import SimpleDirectoryReader, VectorStoreIndex, StorageCon
 from llama_index.core.node_parser import SentenceSplitter
 
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.llms.huggingface import HuggingFaceLLM
 
 ## Connection to the Qdrant client
 client = QdrantClient(url="http://localhost:6333")
@@ -24,8 +25,8 @@ documents = SimpleDirectoryReader(
 ## Chunking
 
 parser = SentenceSplitter(
-    chunk_size=512,
-    chunk_overlap=50
+    chunk_size=256,
+    chunk_overlap=30
 )
 
 nodes = parser.get_nodes_from_documents(documents)
@@ -48,3 +49,18 @@ index = VectorStoreIndex(
     embed_model=embed_model
 )
 
+
+llm = HuggingFaceLLM(
+    model_name="gpt2",
+    tokenizer_name="gpt2",
+    max_new_tokens=256
+)
+
+query_engine = index.as_query_engine(
+    llm=llm,
+    similarity_top_k=2
+)
+
+response = query_engine.query("How do I create a FastAPI app?")
+
+print(response.response)
