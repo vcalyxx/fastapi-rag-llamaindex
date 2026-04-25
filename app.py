@@ -1,3 +1,5 @@
+import os
+
 from qdrant_client import QdrantClient
 from llama_index.vector_stores.qdrant import QdrantVectorStore
 
@@ -7,17 +9,30 @@ from llama_index.core.node_parser import SentenceSplitter
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.llms.huggingface import HuggingFaceLLM
 
+QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
+QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "fastapi_docs")
+
+DOCS_PATH = os.getenv("DOCS_PATH", "docs/docs/en/docs")
+
+EMBED_MODEL = os.getenv("EMBED_MODEL", "BAAI/bge-small-en")
+LLM_MODEL = os.getenv("LLM_MODEL", "gpt2")
+
+CHUNK_SIZE = int(os.getenv("CHUNK_SIZE", "256"))
+CHUNK_OVERLAP = int(os.getenv("CHUNK_OVERLAP", "30"))
+MAX_NEW_TOKENS = int(os.getenv("MAX_NEW_TOKENS", "256"))
+SIMILARITY_TOP_K = int(os.getenv("SIMILARITY_TOP_K", "2"))
+
 ## Connection to the Qdrant client
-client = QdrantClient(url="http://localhost:6333")
+client = QdrantClient(url=QDRANT_URL)
 
 vector_store = QdrantVectorStore(
     client=client,
-    collection_name="fastapi_docs"
+    collection_name=QDRANT_COLLECTION
 )
 
 ## Load documents
 documents = SimpleDirectoryReader(
-    "docs/docs/en/docs",
+    DOCS_PATH,
     required_exts=[".md"]
 ).load_data()
 
@@ -25,8 +40,8 @@ documents = SimpleDirectoryReader(
 ## Chunking
 
 parser = SentenceSplitter(
-    chunk_size=256,
-    chunk_overlap=30
+    chunk_size=CHUNK_SIZE,
+    chunk_overlap=CHUNK_OVERLAP
 )
 
 nodes = parser.get_nodes_from_documents(documents)
@@ -35,7 +50,7 @@ nodes = parser.get_nodes_from_documents(documents)
 
 # Initialize embedding model
 embed_model = HuggingFaceEmbedding(
-    model_name="BAAI/bge-small-en"
+    model_name=EMBED_MODEL
 )
 
 storage_context = StorageContext.from_defaults(
@@ -51,14 +66,14 @@ index = VectorStoreIndex(
 
 
 llm = HuggingFaceLLM(
-    model_name="gpt2",
-    tokenizer_name="gpt2",
-    max_new_tokens=256
+    model_name=LLM_MODEL,
+    tokenizer_name=LLM_MODEL,
+    max_new_tokens=MAX_NEW_TOKENS
 )
 
 query_engine = index.as_query_engine(
     llm=llm,
-    similarity_top_k=2
+    similarity_top_k=SIMILARITY_TOP_K
 )
 
 response = query_engine.query("How do I create a FastAPI app?")
